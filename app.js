@@ -100,8 +100,7 @@ app.post("/auth/update", async (req, res) => {
         })
     }
     let newHashedPassword = await bcrypt.hash(newpassword, 8)
-    let insertStatement = `UPDATE users set password = \'` + newHashedPassword + '\' where email = \'' + email
-    let update = await db.unsafe(insertStatement)
+    let update = await db.unsafe(`UPDATE users set password = \'` + newHashedPassword + '\' where email = \'' + email)
      if (update) {
         return res.render('update', {
             message: `Password updated successfully! ${result[0].name}`
