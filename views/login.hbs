@@ -17,6 +17,7 @@
             <li><a href="/">Home</a></li>
             <li><a href="/login">Login</a></li>
             <li><a href="/register">Register</a></li>
+            <li><a href="/update">Update Password</a></li>
         </ul>
     </nav>
 
@@ -25,10 +26,10 @@
         <div class="card" style="width: 18rem;">            
             <div class="card-header">Login Form</div>    
             <div class="card-body">
-                <form>
+                <form action="/auth/login" method="POST">
                     <div class="mb-3">
-                        <label for="name-lgn" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="name-lgn" name="name">                        
+                        <label for="name-lgn" class="form-label">Email</label>
+                        <input type="text" class="form-control" id="name-lgn" name="email">                        
                     </div>                    
                     <div class="mb-3">
                         <label for="password-lgn" class="form-label">Password</label>
@@ -39,6 +40,9 @@
                 </form>
             </div>
         </div>
+        {{#if message }}
+            <h4 class="alert alert-danger mt-4">{{message}}</h4>
+        {{/if}}
     </div>
 </body>
 </html>

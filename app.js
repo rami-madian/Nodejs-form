@@ -1,20 +1,15 @@
 const express = require('express');
-const mysql = require("mysql")
+const postgres = require("postgres")
 const path = require("path")
 const dotenv = require('dotenv')
-const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 
 dotenv.config({ path: './.env'})
 
 const app = express();
 
-const db = mysql.createConnection({
-    host: process.env.DATABASE_HOST,
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD,
-    database: process.env.DATABASE
-})
+const db = postgres({}) // will use psql environment variables
+
 
 const publicDir = path.join(__dirname, './public')
 
@@ -24,13 +19,6 @@ app.use(express.json())
 
 app.set('view engine', 'hbs')
 
-db.connect((error) => {
-    if(error) {
-        console.log(error)
-    } else {
-        console.log("MySQL connected!")
-    }
-})
 
 app.get("/", (req, res) => {
     res.render("index")
@@ -44,40 +32,83 @@ app.get("/login", (req, res) => {
     res.render("login")
 })
 
-app.post("/auth/register", (req, res) => {    
+app.get("/update", (req, res) => {
+    res.render("update")
+})
+
+app.post("/auth/login", async (req, res) => {
+    const { email, password } = req.body
+    let result = await db `SELECT * FROM users WHERE email = ${email}`
+    if( result.length == 0 ) {
+        return res.render('login', {
+            message: 'User does not exist. Please register first.'
+        })
+    }
+    let samePassword = bcrypt.compareSync(password, result[0].password)
+    if (!samePassword) {
+        return res.render('login', {
+            message: `Wrong password.`
+        })
+    } else {
+        return res.render('login', {
+            message: `Welcome ${result[0].name}`
+        })        
+    } 
+})
+
+app.post("/auth/register", async (req, res) => {
     const { name, email, password, password_confirm } = req.body
-
-    db.query('SELECT email FROM users WHERE email = ?', [email], async (error, result) => {
-        if(error){
-            console.log(error)
-        }
-
-        if( result.length > 0 ) {
-            return res.render('register', {
-                message: 'This email is already in use'
-            })
-        } else if(password !== password_confirm) {
+    let result = await db `SELECT email FROM users WHERE email = ${email}`
+    if( result.length > 0 ) {
+        return res.render('register', {
+            message: 'This email is already in use'
+    })
+    } else if(password !== password_confirm) {
             return res.render('register', {
                 message: 'Password Didn\'t Match!'
             })
-        }
+    }
 
-        let hashedPassword = await bcrypt.hash(password, 8)
+    let hashedPassword = await bcrypt.hash(password, 8)
 
-        console.log(hashedPassword)
-       
-        db.query('INSERT INTO users SET?', {name: name, email: email, password: hashedPassword}, (err, result) => {
-            if(error) {
-                console.log(error)
-            } else {
-                return res.render('register', {
-                    message: 'User registered!'
-                })
-            }
-        })        
-    })
+    console.log(hashedPassword)
+    
+    let user = await db `INSERT INTO users(name, email, password) values (${name}, ${email}, ${hashedPassword})`
+    if(user) {
+        return res.render('register', {
+            message: 'User registered!' 
+        })           
+    } else {
+        console.log(user)
+    }
 })
 
-app.listen(5000, ()=> {
-    console.log("server started on port 5000")
+app.post("/auth/update", async (req, res) => {
+    const { name, oldpassword, newpassword } = req.body
+    let result = await db `SELECT * FROM users WHERE name = ${name}`
+    if( result.length == 0 ) {
+        return res.render('login', {
+            message: 'User does not exist. Please register first.'
+        })
+    }
+    let samePassword = bcrypt.compareSync(oldpassword, result[0].password)
+    //Here the developer will make use of the malicious injected SQL data.
+    let email = result[0].email
+    if (!samePassword) {
+        return res.render('update', {
+            message: `Wrong old password.`
+        })
+    }
+    let newHashedPassword = await bcrypt.hash(newpassword, 8)
+    let insertStatement = `UPDATE users set password = \'` + newHashedPassword + '\' where email = \'' + email
+    let update = await db.unsafe(insertStatement)
+     if (update) {
+        return res.render('update', {
+            message: `Password updated successfully! ${result[0].name}`
+        })        
+    } 
+})
+
+app.listen(8888, ()=> {
+    console.log("server started on port 8888")
 })
