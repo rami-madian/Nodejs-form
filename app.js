@@ -102,6 +102,7 @@ app.post("/auth/update", async (req, res) => {
     let password = await bcrypt.hash(newpassword, 8)
 
     // Unsafe code
+    /*
     const pg = require("pg")
     const { Client } = pg
     const client = new Client({
@@ -119,15 +120,16 @@ app.post("/auth/update", async (req, res) => {
         })
     }
     await client.end()
+    */
     // End
-    /*
+    
     let update = await db.unsafe(`UPDATE users set password = \'` + password + '\' where email = \'' + email)
      if (update) {
         return res.render('update', {
             message: `Password updated successfully! ${result[0].name}`
         })
     }
-    */
+
 })
 
 app.listen(8888, ()=> {
