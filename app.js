@@ -3,6 +3,8 @@ const postgres = require("postgres")
 const path = require("path")
 const dotenv = require('dotenv')
 const bcrypt = require("bcryptjs")
+const cookieParser = require("cookie-parser");
+const sessions = require('express-session');
 
 dotenv.config({ path: './.env'})
 
@@ -18,7 +20,27 @@ app.use(express.urlencoded({extended: 'false'}))
 app.use(express.json())
 
 app.set('view engine', 'hbs')
+const oneDay = 1000 * 60 * 60 * 24;
+app.use(sessions({
+    secret: "thisismysecrctekey",
+    saveUninitialized:true,
+    cookie: { maxAge: oneDay },
+    resave: false
+}));
+app.use(cookieParser());
 
+//Another Postgresql library
+const pg = require("pg")
+const { Client } = pg
+const client = new Client({
+    user: process.env.DATABASE_USER,
+    password: process.env.DATABASE_PASSWORD,
+    host: process.env.DATABASE_HOST,
+    port: 5432,
+    database: process.env.DATABASE,
+  })
+client.connect()
+//
 
 app.get("/", (req, res) => {
     res.render("index")
@@ -33,11 +55,19 @@ app.get("/login", (req, res) => {
 })
 
 app.get("/update", (req, res) => {
-    res.render("update")
+    if (req.session.user) {
+        return res.render("update", {
+            message: `Welcome ${req.session.user.name}`
+        })
+    } else {
+        res.send("<h1>Please login or register your account first!<h1>")
+    }
+
 })
 
 app.post("/auth/login", async (req, res) => {
     const { email, password } = req.body
+    req.session.user = null
     let result = await db `SELECT * FROM users WHERE email = ${email}`
     if( result.length == 0 ) {
         return res.render('login', {
@@ -50,6 +80,7 @@ app.post("/auth/login", async (req, res) => {
             message: `Wrong password.`
         })
     } else {
+        req.session.user = { name: result[0].name, email: result[0].email }
         return res.render('login', {
             message: `Welcome ${result[0].name}`
         })        
@@ -75,6 +106,7 @@ app.post("/auth/register", async (req, res) => {
     
     let user = await db `INSERT INTO users(name, email, password) values (${name}, ${email}, ${hashedPassword})`
     if(user) {
+        req.session.user = { name, email }
         return res.render('register', {
             message: 'User registered!' 
         })           
@@ -84,16 +116,14 @@ app.post("/auth/register", async (req, res) => {
 })
 
 app.post("/auth/update", async (req, res) => {
-    const { name, oldpassword, newpassword } = req.body
-    let result = await db `SELECT * FROM users WHERE name = ${name}`
+    const { oldpassword, newpassword } = req.body
+    let result = await db `SELECT * FROM users WHERE name = ${req.session.user.name} AND email = ${req.session.user.email}`
     if( result.length == 0 ) {
         return res.render('login', {
             message: 'User does not exist. Please register first.'
         })
     }
     let samePassword = bcrypt.compareSync(oldpassword, result[0].password)
-    //Here the developer will make use of the malicious injected SQL data.
-    let email = result[0].email
     if (!samePassword) {
         return res.render('update', {
             message: `Wrong old password.`
@@ -102,36 +132,36 @@ app.post("/auth/update", async (req, res) => {
     let password = await bcrypt.hash(newpassword, 8)
 
     // Unsafe code
-
-    const pg = require("pg")
-    const { Client } = pg
-    const client = new Client({
-        user: process.env.DATABASE_USER,
-        password: process.env.DATABASE_PASSWORD,
-        host: process.env.DATABASE_HOST,
-        port: 5432,
-        database: process.env.DATABASE,
-      })
-    await client.connect()
-    let update = await client.query(`UPDATE users set password = \'` + password + '\' where email = \'' + email)
+    //Here the developer will make use of the malicious injected SQL data.
+    let updateStatement = `UPDATE users set password = '${password}' where email = '${result[0].email}'`
+    let update = await client.query(updateStatement)
     if (update) {
         return res.render('update', {
-            message: `Password updated successfully! ${result[0].name}`
+            message: `Password updated successfully ${result[0].name}.`
         })
     }
-    await client.end()
-
     // End
     
     // Another unsafe way to insert the malicious user input.
     /*
-    let update = await db.unsafe(`UPDATE users set password = \'` + password + '\' where email = \'' + email)
+    let updateStatement = `UPDATE users set password = '${password}' where email = '${req.session.user.email}'`
+    let update = await db.unsafe(updateStatement)
      if (update) {
         return res.render('update', {
-            message: `Password updated successfully! ${result[0].name}`
+            message2: `Password updated successfully! ${result[0].name}`
         })
     }
     */
+   // Safe code
+    /*
+    let update2 = await db `UPDATE users set password = ${password} where email = {req.session.user.email}`
+     if (update2) {
+        return res.render('update', {
+            message2: `Password updated successfully! ${result[0].name}`
+        })
+    }
+    */
+   // End
 })
 
 app.listen(8888, ()=> {

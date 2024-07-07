@@ -12,7 +12,7 @@
 <body>
     {{!-- Navigation links --}}
     <nav>
-        <h4>Node MySQL Login</h4>
+        <h4>Update Password</h4>
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/login">Login</a></li>
@@ -24,13 +24,9 @@
     {{!-- Body --}}
     <div class="container mt-4">
         <div class="card" style="width: 18rem;">            
-            <div class="card-header">Update Password Form</div>    
+            <div class="card-header">Update Password Form</div> 
             <div class="card-body">
                 <form action="/auth/update" method="POST">
-                    <div class="mb-3">
-                        <label for="name-lgn" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="name-lgn" name="name">                        
-                    </div>                    
                     <div class="mb-3">
                         <label for="password-lgn" class="form-label">Old Password</label>
                         <input type="password" class="form-control" id="password-lgn" name="oldpassword">
@@ -45,7 +41,7 @@
             </div>
         </div>
         {{#if message }}
-            <h4 class="alert alert-danger mt-4">{{message}}</h4>
+            <h4 class="alert alert-info mt-4">{{message}}</h4>
         {{/if}}
     </div>
 </body>
