@@ -133,7 +133,7 @@ app.post("/auth/update", async (req, res) => {
 
     // Unsafe code
     //Here the developer will make use of the malicious injected SQL data.
-    /*
+    
     let updateStatement = `UPDATE users set password = '${password}' where email = '${result[0].email}'`
     let update = await client.query(updateStatement)
     if (update) {
@@ -142,7 +142,7 @@ app.post("/auth/update", async (req, res) => {
         })
     }
     // End
-    */
+
     // Another unsafe way to insert the malicious user input.
     /*
     let updateStatement = `UPDATE users set password = '${password}' where email = '${req.session.user.email}'`
@@ -154,14 +154,14 @@ app.post("/auth/update", async (req, res) => {
     }
     */
    // Safe code
-    
+    /*
     let update2 = await db `UPDATE users set password = ${password} where email = ${result[0].email}`
      if (update2) {
         return res.render('update', {
             message: `Password updated successfully! ${result[0].name}`
         })
     }
-
+    */
    // End
 })
 
